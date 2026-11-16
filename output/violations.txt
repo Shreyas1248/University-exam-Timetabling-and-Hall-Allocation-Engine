@@ -1,10 +1,13 @@
 VIOLATIONS REPORT
 ======================================================================
 
-Total violations: 0
-HARD: 0
+Total violations: 2
+HARD: 2
 SOFT: 0
 WARNING: 0
 INFO: 0
 
-No violations recorded.
+[HARD] BR-01 | MBA502
+  No available session satisfies student and hall constraints (student ME21335 has a session clash)
+[HARD] BR-08 | B1
+  UNSTAFFED: no eligible chief available

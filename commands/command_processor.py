@@ -1,6 +1,7 @@
 import csv
 import json
 import os
+import re
 
 class CommandProcessor:
     """Reads and executes PS-067 change commands in sequence."""
@@ -22,12 +23,71 @@ class CommandProcessor:
             raise FileNotFoundError(f"Command file not found: {path}")
 
         with open(path, newline="", encoding="utf-8-sig") as f:
-            commands = list(csv.DictReader(f))
+            content = f.read()
+        commands = self._parse_commands(content)
 
         commands.sort(key=lambda row: int(row.get("sequence", 0)))
         for command in commands:
             self.results.append(self.process(command))
         return self.results
+
+    @classmethod
+    def _parse_commands(cls, content):
+        sample = content[:4096]
+        try:
+            dialect = csv.Sniffer().sniff(sample, delimiters=",\t")
+        except csv.Error:
+            dialect = csv.excel
+        rows = list(csv.reader(content.splitlines(), dialect))
+        if not rows:
+            return []
+
+        headers = [value.strip().lower() for value in rows[0]]
+        if "command" in headers:
+            return [
+                dict(zip(headers, row))
+                for row in rows[1:]
+                if row and any(value.strip() for value in row)
+            ]
+
+        commands = []
+        for sequence, line in enumerate(content.splitlines(), 1):
+            text = line.strip()
+            if not text or text.startswith("#"):
+                continue
+            parts = [part for part in re.split(r"[,|\t ]+", text) if part]
+            command_index = next(
+                (
+                    index for index, value in enumerate(parts)
+                    if value.strip().upper() in cls.SUPPORTED
+                ),
+                None,
+            )
+            if command_index is None or command_index + 1 >= len(parts):
+                raise ValueError(f"Invalid command line {sequence}: {line}")
+
+            name = parts[command_index].strip().upper()
+            target = parts[command_index + 1].strip()
+            parameter = ""
+            if command_index + 2 < len(parts):
+                parameter = parts[command_index + 2].strip()
+                if (
+                    name in ("POSTPONE", "HALL_UNAVAILABLE")
+                    and command_index + 3 < len(parts)
+                ):
+                    parameter += "|" + parts[command_index + 3].strip()
+            command_sequence = (
+                parts[command_index - 1]
+                if command_index > 0 and parts[command_index - 1].isdigit()
+                else str(sequence)
+            )
+            commands.append({
+                "sequence": command_sequence,
+                "command": name,
+                "target": target,
+                "parameter": parameter,
+            })
+        return commands
 
     def process(self, command):
         name = command.get("command", "").strip().upper()

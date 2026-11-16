@@ -31,7 +31,10 @@ class DataLoader:
             self.data[key] = self._read(filename)
         self.data["late_students"] = self._read("late_students.csv", False)
         self.data["late_enrolments"] = self._read("late_enrolments.csv", False)
-        self.data["change_commands"] = self._read("change_commands.csv", False)
+        if os.path.exists(os.path.join(self.data_dir, "change_commands.csv")):
+            self.data["change_commands"] = self._read("change_commands.csv")
+        else:
+            self.data["change_commands"] = self._read("commands.txt", False)
         self._build_indexes()
         return self.data
 

@@ -26,3 +26,4 @@ class HallAssignment:
     students: list[str]
     duration: int
     extended_end: Optional[str] = None
+    students_by_course: dict[str, list[str]] = field(default_factory=dict)

@@ -1,8 +1,11 @@
 from dataclasses import replace
 
 from .constraint_checker import ConstraintChecker
-from .hall_allocator import HallAllocator, pack_courses
+from .hall_allocator import HallAllocator, make_hall_assignment, pack_courses
 from .incremental_scheduler import IncrementalScheduler
+from .invigilator_allocator import InvigilatorAllocator
+from .seating_engine import SeatingEngine
+from .time_utils import exam_end_time
 
 
 class ChangeManager:
@@ -178,13 +181,22 @@ class ChangeManager:
                     if new_slot:
                         old_date, old_session = candidate.date, candidate.session
                         candidate.date, candidate.session = new_slot
+                        self.violations.append({
+                            "rule_id": "BR-10",
+                            "severity": "WARNING",
+                            "entity": candidate.course_code,
+                            "message": (
+                                f"Moved from {old_date} {old_session} to "
+                                f"{new_slot[0]} {new_slot[1]} after hall closure"
+                            ),
+                        })
                         affected.add((old_date, old_session))
                         affected.add(new_slot)
                         moved = True
                         break
                 if not moved:
                     self.violations.append({
-                        "rule_id": "BR-06/07",
+                        "rule_id": "BR-10",
                         "severity": "HARD",
                         "entity": f"{exam_date} {exam_session}",
                         "message": "Session exceeds available hall capacity after hall closure",
@@ -256,17 +268,23 @@ class ChangeManager:
     def add_late_registrant(self, student, course_code):
         if course_code not in self.data["course_by_code"]:
             return {"status": "REJECTED_UNKNOWN_COURSE", "course_code": course_code}
-        sid = student["student_id"]
+        sid = str(student.get("student_id", "")).strip()
+        if not sid:
+            return {"status": "REJECTED_UNKNOWN_STUDENT", "student_id": sid}
+        student = dict(student)
+        student["student_id"] = sid
         assignment = next((a for a in self.assignments if a.course_code == course_code), None)
         if assignment is None:
             return {"status": "REJECTED_UNSCHEDULED_COURSE", "course_code": course_code}
-        if sid in assignment.students:
+        if (
+            sid in assignment.students
+            or sid in self.data["course_students"].get(course_code, [])
+        ):
             return {"status": "REJECTED_ALREADY_ENROLLED", "student_id": sid}
 
-        conflicts = [
-            a for a in self.assignments
-            if a.course_code != course_code and sid in a.students and a.date == assignment.date
-        ]
+        conflicts = self._late_registration_conflicts(
+            sid, student, course_code, assignment
+        )
         if conflicts:
             return {
                 "status": "REJECTED_CLASH",
@@ -274,14 +292,188 @@ class ChangeManager:
                 "course_codes": [course_code] + [a.course_code for a in conflicts],
             }
 
+        old_student = self.data["student_by_id"].get(sid)
+        if old_student is not None:
+            student = old_student
         self.data["student_by_id"][sid] = student
-        self.data["course_students"].setdefault(course_code, []).append(sid)
+        session_key = (assignment.date, assignment.session)
+        current_halls = [
+            hall_assignment for hall_assignment in self.hall_assignments
+            if (hall_assignment.date, hall_assignment.session) == session_key
+        ]
+        if not current_halls:
+            current_halls = HallAllocator(self.data).allocate(
+                [
+                    item for item in self.assignments
+                    if (item.date, item.session) == session_key
+                ],
+                self.unavailable_halls,
+            )
+
+        available_halls = self._session_halls(*session_key)
+        if sum(len(item.students) for item in self.assignments
+               if (item.date, item.session) == session_key) + 1 > int(
+                   sum(int(hall["capacity"]) for hall in available_halls) * 0.90
+               ):
+            if old_student is None:
+                self.data["student_by_id"].pop(sid, None)
+            else:
+                self.data["student_by_id"][sid] = old_student
+            return {"status": "REJECTED_NO_SEAT", "student_id": sid}
+
+        course = self.data["course_by_code"][course_code]
+        course_size = len(self.data["course_students"].get(course_code, [])) + 1
+        candidates = []
+        seating_engine = SeatingEngine(self.data)
+        for hall in available_halls:
+            existing = next(
+                (item for item in current_halls if item.hall_id == hall["hall_id"]),
+                None,
+            )
+            courses, students_by_course = self._hall_course_groups(existing)
+            if course_code not in courses:
+                if len(courses) >= 2:
+                    continue
+                if any(
+                    self.data["course_by_code"][code]["department"]
+                    == course.get("department")
+                    for code in courses
+                ):
+                    continue
+                if existing and existing.duration != int(assignment.duration):
+                    continue
+                courses.append(course_code)
+                students_by_course[course_code] = []
+            if course_size < 10 and (
+                len(courses) != 2
+                or any(
+                    self.data["course_by_code"][code]["department"]
+                    == course.get("department")
+                    for code in courses if code != course_code
+                )
+            ):
+                continue
+
+            students_by_course.setdefault(course_code, []).append(sid)
+            duration = int(assignment.duration)
+            provisional = make_hall_assignment(
+                self.data,
+                assignment.date,
+                assignment.session,
+                hall,
+                courses,
+                students_by_course,
+                duration,
+            )
+            if not seating_engine.can_seat(provisional):
+                continue
+            free_seats = int(hall["capacity"]) - (
+                len(existing.students) if existing else 0
+            )
+            candidates.append((free_seats, hall["hall_id"], provisional))
+
+        if not candidates:
+            if old_student is None:
+                self.data["student_by_id"].pop(sid, None)
+            else:
+                self.data["student_by_id"][sid] = old_student
+            return {"status": "REJECTED_NO_SEAT", "student_id": sid}
+
+        _, selected_hall_id, selected_hall = min(
+            candidates, key=lambda item: (-item[0], item[1])
+        )
+
+        if old_student is None:
+            self.data.setdefault("students", []).append(student)
+        self.data.setdefault("course_students", {}).setdefault(
+            course_code, []
+        ).append(sid)
+        self.data.setdefault("student_courses", {}).setdefault(sid, []).append(
+            course_code
+        )
+        self.data.setdefault("enrolments", []).append({
+            "course_code": course_code,
+            "student_id": sid,
+            "enrolment_type": (
+                "BACKLOG" if str(course.get("exam_type", "")).upper() == "BACKLOG"
+                else "REGULAR"
+            ),
+        })
+        course["enrolment_count"] = str(
+            len(self.data["course_students"][course_code])
+        )
         assignment.students.append(sid)
         affected = {(assignment.date, assignment.session)}
-        self._rebuild_sessions(affected)
+        retained = [
+            hall_assignment for hall_assignment in self.hall_assignments
+            if (hall_assignment.date, hall_assignment.session) != session_key
+        ]
+        current_halls = [
+            hall_assignment for hall_assignment in current_halls
+            if hall_assignment.hall_id != selected_hall_id
+        ]
+        self.hall_assignments = retained + current_halls + [selected_hall]
+        invigilator_allocator = InvigilatorAllocator(self.data)
+        self.roster = invigilator_allocator.allocate_incremental(
+            self.hall_assignments, self.roster, affected
+        )
+        self.violations.extend(invigilator_allocator.violations)
         return {
             "status": "ADDED",
             "student_id": sid,
             "course_code": course_code,
+            "hall_id": selected_hall_id,
             "affected_sessions": sorted(affected),
         }
+
+    def _late_registration_conflicts(self, sid, student, course_code, assignment):
+        same_day = [
+            item for item in self.assignments
+            if item.course_code != course_code
+            and sid in item.students
+            and item.date == assignment.date
+        ]
+        same_session = [
+            item for item in same_day if item.session == assignment.session
+        ]
+        if same_session or len(same_day) >= 2:
+            return same_session or same_day
+        if not same_day:
+            return []
+
+        existing_course = self.data["course_by_code"][same_day[0].course_code]
+        candidate_course = self.data["course_by_code"][course_code]
+        consent = str(student.get("backlog_consent", "NO")).strip().upper() == "YES"
+        backlog_pair = (
+            str(existing_course.get("exam_type", "REGULAR")).strip().upper()
+            == "BACKLOG"
+            or str(candidate_course.get("exam_type", "REGULAR")).strip().upper()
+            == "BACKLOG"
+        )
+        if consent and backlog_pair and same_day[0].session != assignment.session:
+            return []
+        return same_day
+
+    def _hall_course_groups(self, hall_assignment):
+        if hall_assignment is None:
+            return [], {}
+        if hall_assignment.students_by_course:
+            return (
+                list(hall_assignment.courses),
+                {
+                    code: list(hall_assignment.students_by_course.get(code, []))
+                    for code in hall_assignment.courses
+                },
+            )
+
+        groups = {}
+        assigned = set(hall_assignment.students)
+        for code in hall_assignment.courses:
+            members = set(self.data["course_students"].get(code, []))
+            groups[code] = [
+                sid for sid in hall_assignment.students if sid in members
+            ]
+            assigned.difference_update(groups[code])
+        if assigned and hall_assignment.courses:
+            groups[hall_assignment.courses[0]].extend(sorted(assigned))
+        return list(hall_assignment.courses), groups

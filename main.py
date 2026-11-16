@@ -57,7 +57,18 @@ def run(data_dir="data", output_dir="output", command_file=None):
         f"{len(data['halls'])} halls and {len(data['invigilators'])} invigilators."
     )
 
-    commands_path = command_file or os.path.join(data_dir, "change_commands.csv")
+    commands_path = command_file
+    if not commands_path:
+        commands_path = next(
+            (
+                path for path in (
+                    os.path.join(data_dir, "change_commands.csv"),
+                    os.path.join(data_dir, "commands.txt"),
+                )
+                if os.path.isfile(path)
+            ),
+            None,
+        )
     unavailable = planned_hall_closures(commands_path, data)
     scheduler = ExamScheduler(data, unavailable_halls=unavailable)
     assignments = scheduler.generate()
@@ -66,9 +77,10 @@ def run(data_dir="data", output_dir="output", command_file=None):
     hall_allocator = HallAllocator(data)
     hall_assignments = hall_allocator.allocate(assignments, unavailable=unavailable)
     seating_plan = SeatingEngine(data).create_seating_plan(hall_assignments)
-    roster = InvigilatorAllocator(data).allocate(hall_assignments)
-
     violations = list(scheduler.violations) + list(hall_allocator.violations)
+    invigilator_allocator = InvigilatorAllocator(data)
+    roster = invigilator_allocator.allocate(hall_assignments)
+    violations.extend(invigilator_allocator.violations)
 
     change_manager = ChangeManager(
         data, assignments, hall_assignments, roster,
@@ -84,6 +96,13 @@ def run(data_dir="data", output_dir="output", command_file=None):
         roster = change_manager.roster
         seating_plan = SeatingEngine(data).create_seating_plan(hall_assignments)
         violations.extend(change_manager.violations)
+
+    for seat in seating_plan:
+        if seat["status"] != "ASSIGNED":
+            violations.append(Violation(
+                "BR-06", "HARD", seat["student_id"],
+                f"Student could not be assigned a valid seat: {seat['status']}"
+            ))
 
     os.makedirs(output_dir, exist_ok=True)
     TimetableReport(output_dir).generate(assignments, data)

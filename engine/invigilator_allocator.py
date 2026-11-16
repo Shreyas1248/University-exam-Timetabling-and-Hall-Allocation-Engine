@@ -2,6 +2,8 @@ from collections import defaultdict
 from datetime import date
 from math import ceil
 
+from .time_utils import exam_end_time, exam_start_time
+
 
 class InvigilatorAllocator:
     """Allocates invigilators with workload accounting and incremental rebuilds."""
@@ -15,6 +17,70 @@ class InvigilatorAllocator:
         parsed = date.fromisoformat(date_text)
         iso = parsed.isocalendar()
         return (iso.year, iso.week)
+
+    @staticmethod
+    def _time_conflict(invigilator, exam_date, exam_start, exam_end):
+        periods = []
+        for field in ("unavailable_periods", "other_duties"):
+            periods.extend(
+                (field, item.strip())
+                for item in invigilator.get(field, "").split(";")
+                if item.strip()
+            )
+
+        exam_start_minutes = InvigilatorAllocator._minutes(exam_start)
+        exam_end_minutes = InvigilatorAllocator._minutes(exam_end)
+        for field, period in periods:
+            parts = [part.strip() for part in period.split("|")]
+            if len(parts) != 3:
+                raise ValueError(
+                    f"Invalid {field} entry {period!r}; expected "
+                    "YYYY-MM-DD|HH:MM|HH:MM"
+                )
+            period_date, start, end = parts
+            if period_date == exam_date:
+                if (
+                    InvigilatorAllocator._minutes(start) < exam_end_minutes
+                    and InvigilatorAllocator._minutes(end) > exam_start_minutes
+                ):
+                    return True
+        return False
+
+    @staticmethod
+    def _minutes(value):
+        hours, minutes = (int(part) for part in value.split(":"))
+        if hours < 0 or hours > 23 or minutes < 0 or minutes > 59:
+            raise ValueError(f"Invalid time value: {value}")
+        return hours * 60 + minutes
+
+    def _duty_times(self, hall_assignment):
+        start = exam_start_time(
+            self.data, hall_assignment.date, hall_assignment.session
+        )
+        has_special_needs = any(
+            str(self.data["student_by_id"].get(sid, {}).get("special_needs", "NO"))
+            .strip().upper() == "YES"
+            for sid in hall_assignment.students
+        )
+        end = hall_assignment.extended_end or exam_end_time(
+            self.data,
+            hall_assignment.date,
+            hall_assignment.session,
+            hall_assignment.duration,
+            20 if has_special_needs else 0,
+        )
+        return start, end
+
+    def _unavailable_on_date(self, invigilator, exam_date, start, end):
+        unavailable_dates = {
+            value.strip()
+            for value in invigilator.get("unavailable_dates", "").split(";")
+            if value.strip()
+        }
+        return (
+            exam_date in unavailable_dates
+            or self._time_conflict(invigilator, exam_date, start, end)
+        )
 
     def allocate(self, hall_assignments):
         all_keys = {(ha.date, ha.session) for ha in hall_assignments}
@@ -56,6 +122,7 @@ class InvigilatorAllocator:
         for ha in affected_halls:
             hall = self.data["hall_by_id"][ha.hall_id]
             required = max(1, ceil(len(ha.students) / 30))
+            duty_start, duty_end = self._duty_times(ha)
             course_departments = {
                 self.data["course_by_code"][code]["department"]
                 for code in ha.courses
@@ -64,15 +131,12 @@ class InvigilatorAllocator:
 
             for inv in self.data["invigilators"]:
                 iid = inv["invigilator_id"]
-                unavailable = {
-                    value.strip()
-                    for value in inv.get("unavailable_dates", "").split(";")
-                    if value.strip()
-                }
                 week = self._week_key(ha.date)
                 if inv["department"] in course_departments:
                     continue
-                if ha.date in unavailable:
+                if self._unavailable_on_date(
+                    inv, ha.date, duty_start, duty_end
+                ):
                     continue
                 if daily_load[(iid, ha.date)] >= 2:
                     continue
@@ -105,8 +169,17 @@ class InvigilatorAllocator:
                 assigned_total[iid] += 1
 
             if len(selected) < required:
+                for _ in range(required - len(selected)):
+                    new_rows.append({
+                        "date": ha.date,
+                        "session": ha.session,
+                        "hall_id": ha.hall_id,
+                        "invigilator_id": "",
+                        "role": "INVIGILATOR",
+                        "status": "UNSTAFFED",
+                    })
                 self.violations.append({
-                    "rule_id": "BR-10/11",
+                    "rule_id": "BR-08",
                     "severity": "HARD",
                     "entity": ha.hall_id,
                     "message": (
@@ -127,17 +200,22 @@ class InvigilatorAllocator:
                 for ha in halls for code in ha.courses
             }
             candidates = []
+            duty_start = min(
+                self._duty_times(ha)[0] for ha in halls
+            )
+            duty_end = max(
+                self._duty_times(ha)[1] for ha in halls
+            )
 
             for inv in self.data["invigilators"]:
                 iid = inv["invigilator_id"]
-                unavailable = {
-                    value.strip()
-                    for value in inv.get("unavailable_dates", "").split(";")
-                    if value.strip()
-                }
                 if str(inv.get("is_chief_eligible", "NO")).upper() != "YES":
                     continue
-                if inv["department"] in building_departments or exam_date in unavailable:
+                if inv["department"] in building_departments:
+                    continue
+                if self._unavailable_on_date(
+                    inv, exam_date, duty_start, duty_end
+                ):
                     continue
                 if daily_load[(iid, exam_date)] >= 2:
                     continue
@@ -171,8 +249,16 @@ class InvigilatorAllocator:
                 session_load[(iid, exam_date, session)] += 1
                 assigned_total[iid] += 1
             else:
+                new_rows.append({
+                    "date": exam_date,
+                    "session": session,
+                    "hall_id": sorted(halls, key=lambda ha: ha.hall_id)[0].hall_id,
+                    "invigilator_id": "",
+                    "role": "CHIEF",
+                    "status": "UNSTAFFED",
+                })
                 self.violations.append({
-                    "rule_id": "BR-10/11",
+                    "rule_id": "BR-08",
                     "severity": "HARD",
                     "entity": building,
                     "message": "UNSTAFFED: no eligible chief available",

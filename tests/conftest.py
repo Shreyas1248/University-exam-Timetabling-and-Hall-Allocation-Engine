@@ -26,7 +26,7 @@ def small_data():
         {"invigilator_id":"I001","name":"Invigilator 1","department":"ECE",
          "max_sessions_per_week":"5","unavailable_dates":"","is_chief_eligible":"YES"},
         {"invigilator_id":"I002","name":"Invigilator 2","department":"ME",
-         "max_sessions_per_week":"5","unavailable_dates":"","is_chief_eligible":"NO"},
+         "max_sessions_per_week":"5","unavailable_dates":"","is_chief_eligible":"YES"},
     ]
     return {
         "courses": courses,

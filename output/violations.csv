@@ -1,1 +1,3 @@
 rule_id,severity,entity,message
+BR-01,HARD,MBA502,No available session satisfies student and hall constraints (student ME21335 has a session clash)
+BR-08,HARD,B1,UNSTAFFED: no eligible chief available

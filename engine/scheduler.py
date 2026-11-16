@@ -115,8 +115,15 @@ class ExamScheduler:
                 placed = gap_fallback
 
             if placed is None:
+                rule_id = "BR-04"
+                if last_reason == "no eligible session":
+                    rule_id = "BR-12" if backlog else "BR-04"
+                elif "student" in last_reason:
+                    rule_id = "BR-01"
+                elif "gap" in last_reason:
+                    rule_id = "BR-02"
                 self.violations.append(Violation(
-                    "BR-01/02/04/06/07/12", "HARD", code,
+                    rule_id, "HARD", code,
                     f"No available session satisfies student and hall constraints ({last_reason})"
                 ))
                 continue
@@ -132,6 +139,6 @@ class ExamScheduler:
             self.checker.register(course, assignment.date, assignment.session)
 
             for message in soft:
-                self.violations.append(Violation("BR-04", "SOFT", code, message))
+                self.violations.append(Violation("BR-02", "SOFT", code, message))
 
         return assignments
