@@ -5,6 +5,7 @@ import sys
 
 from engine.data_loader import DataLoader
 from engine.validator import DataValidator
+from engine.models import Violation
 from engine.scheduler import ExamScheduler
 from engine.hall_allocator import HallAllocator
 from engine.seating_engine import SeatingEngine
@@ -15,6 +16,7 @@ from reports.timetable_report import TimetableReport
 from reports.hall_report import HallReport
 from reports.invigilation_report import InvigilationReport
 from reports.violation_report import ViolationReport
+from commands.ps067_runner import PS067Runner
 
 
 def planned_hall_closures(command_path, data):
@@ -41,7 +43,8 @@ def planned_hall_closures(command_path, data):
     return closures
 
 
-def run(data_dir="data", output_dir="output", command_file=None):
+def run(data_dir="data", output_dir="output",
+        command_file=None):
     print("PS-067 University Exam Timetabling and Hall Allocation Engine")
     print("-" * 65)
     data = DataLoader(data_dir).load_all()
@@ -69,6 +72,16 @@ def run(data_dir="data", output_dir="output", command_file=None):
             ),
             None,
         )
+    if commands_path and commands_path.lower().endswith(".txt"):
+        runner = PS067Runner(data, output_dir)
+        results = runner.process_file(commands_path)
+        scheduled = len(runner.assignments)
+        print(f"Scheduled {scheduled} of {len(data['courses'])} courses.")
+        print(f"Processed {len(results)} change commands.")
+        print(f"Reports written to: {os.path.abspath(output_dir)}")
+        print("Run completed.")
+        return 0
+
     unavailable = planned_hall_closures(commands_path, data)
     scheduler = ExamScheduler(data, unavailable_halls=unavailable)
     assignments = scheduler.generate()

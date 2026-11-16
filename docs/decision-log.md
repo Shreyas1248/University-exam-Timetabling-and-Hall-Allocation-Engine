@@ -14,4 +14,7 @@
 12. Sort eligible invigilators by current load, department, and ID for deterministic allocation.
 13. Represent optional external duties as semicolon-separated `YYYY-MM-DD|HH:MM|HH:MM` intervals.
 14. Do not break hard clash or backlog-window rules to force every course into the bundled sample timetable.
-15. Treat the official sample expected outputs as the acceptance oracle once the sample ZIP is available.
+15. Treat the official sample's stated input and output contracts as the visible acceptance criteria; its README provides no expected output files.
+16. Use a bounded deterministic repair search for courses stranded by student conflicts or session capacity, without relaxing hard rules or backlog windows.
+17. Reserve building/session chiefs before hall staffing and attach each chief to a hall that satisfies department eligibility.
+18. Process courses with fewer than 10 students first during hall packing so their required cross-department pairing can reserve capacity while halls are still filled largest-first.

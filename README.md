@@ -17,29 +17,34 @@ From the repository root:
 py -3 main.py
 ```
 
-By default, the engine reads CSV files from `data\`, applies
-`data\change_commands.csv` when present, and writes reports to `output\`.
-Override those paths with:
+By default, the engine reads the bundled fixture from `data\` and writes
+reports to `output\`. To run the official sample pack, place its files locally
+in `data\official\` and pass those paths explicitly:
 
 ```powershell
-py -3 main.py --data data --output output --commands data\change_commands.csv
+py -3 main.py --data data\official --output output --commands data\official\commands.txt
 ```
 
-Input columns and fixture conventions are described in [data/README.txt](data/README.txt).
-The command file supports `POSTPONE`, `HALL_UNAVAILABLE`, and
-`ADD_LATE_REGISTRANT`.
+The official CSV schemas, pipe-delimited commands, output columns, and planted
+scenarios are documented in the sample pack's README. The pack is excluded
+from Git because it contains student identifiers and special-needs/consent
+flags. The bundled fixture under `data\` is documented in
+[data/README.txt](data/README.txt).
 
 ## Output
 
-- `timetable.csv` and `timetable.txt`: scheduled and explicitly unscheduled
-  courses, session times, durations, and soft-rule notes.
-- `hall_allocation.csv`: halls, courses, seat counts, and extended end times.
-- `seating_plan.csv` and `seating_map.txt`: course-aware seat numbers and
-  assignment status.
-- `invigilation_roster.csv` and `invigilation_roster.txt`: invigilators,
-  chiefs, and explicit `UNSTAFFED` assignments.
-- `violations.csv` and `violations.txt`: hard, soft, and warning outcomes.
-- `command_results.csv`: result for every change command.
+The bundled fixture generates `timetable.csv`, `timetable.txt`,
+`hall_allocation.csv`, `seating_plan.csv`, `seating_map.txt`,
+`invigilation_roster.csv`, `invigilation_roster.txt`, `violations.csv`,
+`violations.txt`, and `command_results.csv`.
+
+For the official pipe-delimited command workflow:
+
+- `timetable.csv`: timetable snapshots recorded by `PRINT_TIMETABLE`.
+- `hall_plan.csv`: row-major seats recorded by `PRINT_HALL_PLAN`.
+- `roster.csv`: invigilator and chief duties.
+- `violations.csv`: violations recorded by `PRINT_VIOLATIONS`.
+- `change_results.csv`: result for every change command.
 
 ## Tests
 
@@ -65,10 +70,8 @@ py -3 tools/build_design_pdf.py
 
 ## Sample fixture notes
 
-The bundled fixture contains 120 courses and 2,500 students. The current run
-leaves `MBA502` explicitly unscheduled because no remaining supplementary
-session satisfies its student-clash constraints. It also reports an
-unavailable chief for one building/session rather than silently assigning an
-ineligible invigilator. These outcomes are visible in the generated reports;
-the official sample pack's hidden expected outputs were not included with this
-repository and must be used for final field-by-field acceptance testing.
+The locally supplied official pack contains 120 courses, 2,016 students, 18
+halls, 90 invigilators, and 8 change commands. Its README states that expected
+output files are not included, so the workflow can be checked for rule
+behavior and output format but cannot be certified against the hidden
+field-for-field acceptance set.

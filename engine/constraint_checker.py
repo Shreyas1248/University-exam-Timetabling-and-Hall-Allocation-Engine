@@ -8,6 +8,7 @@ class ConstraintChecker:
         self.data = data
         self.student_daily = {}
         self.student_session = {}
+        self.indexed_assignments = set()
 
     def _course_cohorts(self, course):
         code = course["course_code"]
@@ -28,6 +29,15 @@ class ConstraintChecker:
             ))
         return cohorts
 
+    def _is_backlog_for_student(self, student_id, course_code):
+        course = self.data["course_by_code"].get(course_code, {})
+        if str(course.get("exam_type", "REGULAR")).strip().upper() == "BACKLOG":
+            return True
+        enrolment = self.data.get(
+            "enrolment_by_student_course", {}
+        ).get((student_id, course_code), {})
+        return str(enrolment.get("enrolment_type", "")).strip().upper() == "BACKLOG"
+
     def can_assign(self, course, date, session, assignments, allow_gap_violation=False):
         code = course["course_code"]
         students = self.data["course_students"].get(code, [])
@@ -37,27 +47,30 @@ class ConstraintChecker:
             if (sid, date, session) in self.student_session:
                 return False, [], f"student {sid} has a session clash"
 
-            same_day = {
-                (a.course_code, a.session)
-                for a in assignments
-                if sid in a.students and a.date == date
-            }
-            same_day.update(
-                (course_code, registered_session)
-                for (registered_sid, registered_date, registered_session), course_code
-                in self.student_session.items()
-                if registered_sid == sid and registered_date == date
-            )
+            same_day = set(self.student_daily.get((sid, date), []))
+            for assignment in assignments:
+                assignment_key = (
+                    assignment.course_code, assignment.date, assignment.session
+                )
+                if (
+                    assignment_key not in self.indexed_assignments
+                    and assignment.date == date
+                    and sid in assignment.students
+                ):
+                    same_day.add(
+                        (assignment.course_code, assignment.session)
+                    )
             if len(same_day) >= 2:
                 return False, [], f"student {sid} exceeds two exams per day"
 
             if len(same_day) == 1:
                 student = self.data["student_by_id"].get(sid, {})
                 consent = str(student.get("backlog_consent", "NO")).strip().upper() == "YES"
-                candidate_backlog = str(course.get("exam_type", "REGULAR")).strip().upper() == "BACKLOG"
                 existing_code, existing_session = next(iter(same_day))
-                existing_course = self.data["course_by_code"].get(existing_code, {})
-                existing_backlog = str(existing_course.get("exam_type", "REGULAR")).strip().upper() == "BACKLOG"
+                candidate_backlog = self._is_backlog_for_student(sid, code)
+                existing_backlog = self._is_backlog_for_student(
+                    sid, existing_code
+                )
                 if not (
                     consent
                     and (candidate_backlog or existing_backlog)
@@ -79,7 +92,12 @@ class ConstraintChecker:
                 previous = datetime.strptime(assignment.date, "%Y-%m-%d").date()
                 if abs((current - previous).days) < 2:
                     if allow_gap_violation:
-                        soft.append("BR-02: core exams have fewer than one full day between them")
+                        message = (
+                            "BR-02: core exams have fewer than one full day "
+                            "between them"
+                        )
+                        if message not in soft:
+                            soft.append(message)
                     else:
                         return False, [], "core-course gap rule"
 
@@ -89,11 +107,27 @@ class ConstraintChecker:
         code = course["course_code"]
         for sid in self.data["course_students"].get(code, []):
             self.student_session[(sid, date, session)] = code
-            self.student_daily.setdefault((sid, date), []).append(code)
+            self.student_daily.setdefault((sid, date), []).append(
+                (code, session)
+            )
+        self.indexed_assignments.add((code, date, session))
+
+    def unregister(self, course_code, date, session):
+        for sid in self.data["course_students"].get(course_code, []):
+            self.student_session.pop((sid, date, session), None)
+            key = (sid, date)
+            entries = self.student_daily.get(key, [])
+            entry = (course_code, session)
+            if entry in entries:
+                entries.remove(entry)
+            if not entries:
+                self.student_daily.pop(key, None)
+        self.indexed_assignments.discard((course_code, date, session))
 
     def clear_and_rebuild(self, assignments):
         self.student_daily.clear()
         self.student_session.clear()
+        self.indexed_assignments.clear()
         for assignment in assignments:
             course = self.data["course_by_code"][assignment.course_code]
             self.register(course, assignment.date, assignment.session)

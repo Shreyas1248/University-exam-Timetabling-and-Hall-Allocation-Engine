@@ -136,6 +136,16 @@ class SeatingEngine:
                 })
                 previous_course = selected
 
+            if row == 1:
+                for code, students in queues.items():
+                    while students and self._is_special(
+                        self.data["student_by_id"].get(students[0], {})
+                    ):
+                        append_unseated(
+                            code, students.pop(0),
+                            "SPECIAL_NEEDS_ROW_CAPACITY_EXCEEDED",
+                        )
+
         for code, students in queues.items():
             remaining_special = [
                 sid for sid in students

@@ -119,6 +119,82 @@ class InvigilatorAllocator:
         affected_halls.sort(key=lambda ha: (ha.date, ha.session, ha.hall_id))
 
         new_rows = []
+        building_groups = defaultdict(list)
+        for ha in affected_halls:
+            building = self.data["hall_by_id"][ha.hall_id]["building"]
+            building_groups[(ha.date, ha.session, building)].append(ha)
+
+        # Reserve one eligible chief for each building/session before filling
+        # hall roles, so the same limited pool cannot be consumed first.
+        for (exam_date, session, building), halls in sorted(building_groups.items()):
+            duty_start = min(self._duty_times(ha)[0] for ha in halls)
+            duty_end = max(self._duty_times(ha)[1] for ha in halls)
+            candidates = []
+
+            for inv in self.data["invigilators"]:
+                iid = inv["invigilator_id"]
+                if str(inv.get("is_chief_eligible", "NO")).strip().upper() != "YES":
+                    continue
+                if self._unavailable_on_date(
+                    inv, exam_date, duty_start, duty_end
+                ):
+                    continue
+                if daily_load[(iid, exam_date)] >= 2:
+                    continue
+                if session_load[(iid, exam_date, session)]:
+                    continue
+                if weekly_load[(iid, self._week_key(exam_date))] >= int(inv["max_sessions_per_week"]):
+                    continue
+
+                compatible_halls = [
+                    ha for ha in halls
+                    if inv["department"] not in {
+                        self.data["course_by_code"][code]["department"]
+                        for code in ha.courses
+                    }
+                ]
+                if compatible_halls:
+                    candidates.append((inv, min(
+                        compatible_halls, key=lambda ha: ha.hall_id
+                    )))
+
+            candidates.sort(key=lambda item: (
+                assigned_total[item[0]["invigilator_id"]],
+                item[0]["department"],
+                item[0]["invigilator_id"],
+            ))
+            chief_hall = min(halls, key=lambda ha: ha.hall_id)
+            if candidates:
+                inv, chief_hall = candidates[0]
+                iid = inv["invigilator_id"]
+                new_rows.append({
+                    "date": exam_date,
+                    "session": session,
+                    "hall_id": chief_hall.hall_id,
+                    "invigilator_id": iid,
+                    "role": "CHIEF",
+                    "status": "ASSIGNED",
+                })
+                weekly_load[(iid, self._week_key(exam_date))] += 1
+                daily_load[(iid, exam_date)] += 1
+                session_load[(iid, exam_date, session)] += 1
+                assigned_total[iid] += 1
+            else:
+                new_rows.append({
+                    "date": exam_date,
+                    "session": session,
+                    "hall_id": chief_hall.hall_id,
+                    "invigilator_id": "",
+                    "role": "CHIEF",
+                    "status": "UNSTAFFED",
+                })
+                self.violations.append({
+                    "rule_id": "BR-08",
+                    "severity": "HARD",
+                    "entity": building,
+                    "message": "UNSTAFFED: no eligible chief available",
+                })
+
         for ha in affected_halls:
             hall = self.data["hall_by_id"][ha.hall_id]
             required = max(1, ceil(len(ha.students) / 30))
@@ -185,83 +261,6 @@ class InvigilatorAllocator:
                     "message": (
                         f"UNSTAFFED: required {required}, assigned {len(selected)}"
                     ),
-                })
-
-        # One chief per building/session. Check all course departments in that
-        # building/session, not just the first hall encountered.
-        building_groups = defaultdict(list)
-        for ha in affected_halls:
-            building = self.data["hall_by_id"][ha.hall_id]["building"]
-            building_groups[(ha.date, ha.session, building)].append(ha)
-
-        for (exam_date, session, building), halls in sorted(building_groups.items()):
-            building_departments = {
-                self.data["course_by_code"][code]["department"]
-                for ha in halls for code in ha.courses
-            }
-            candidates = []
-            duty_start = min(
-                self._duty_times(ha)[0] for ha in halls
-            )
-            duty_end = max(
-                self._duty_times(ha)[1] for ha in halls
-            )
-
-            for inv in self.data["invigilators"]:
-                iid = inv["invigilator_id"]
-                if str(inv.get("is_chief_eligible", "NO")).upper() != "YES":
-                    continue
-                if inv["department"] in building_departments:
-                    continue
-                if self._unavailable_on_date(
-                    inv, exam_date, duty_start, duty_end
-                ):
-                    continue
-                if daily_load[(iid, exam_date)] >= 2:
-                    continue
-                if session_load[(iid, exam_date, session)]:
-                    continue
-                if weekly_load[(iid, self._week_key(exam_date))] >= int(inv["max_sessions_per_week"]):
-                    continue
-                candidates.append(inv)
-
-            candidates.sort(key=lambda inv: (
-                assigned_total[inv["invigilator_id"]],
-                inv["department"],
-                inv["invigilator_id"],
-            ))
-
-            if candidates:
-                inv = candidates[0]
-                iid = inv["invigilator_id"]
-                # Attach the chief to the first hall in the building.
-                chief_hall = sorted(halls, key=lambda ha: ha.hall_id)[0]
-                new_rows.append({
-                    "date": exam_date,
-                    "session": session,
-                    "hall_id": chief_hall.hall_id,
-                    "invigilator_id": iid,
-                    "role": "CHIEF",
-                    "status": "ASSIGNED",
-                })
-                weekly_load[(iid, self._week_key(exam_date))] += 1
-                daily_load[(iid, exam_date)] += 1
-                session_load[(iid, exam_date, session)] += 1
-                assigned_total[iid] += 1
-            else:
-                new_rows.append({
-                    "date": exam_date,
-                    "session": session,
-                    "hall_id": sorted(halls, key=lambda ha: ha.hall_id)[0].hall_id,
-                    "invigilator_id": "",
-                    "role": "CHIEF",
-                    "status": "UNSTAFFED",
-                })
-                self.violations.append({
-                    "rule_id": "BR-08",
-                    "severity": "HARD",
-                    "entity": building,
-                    "message": "UNSTAFFED: no eligible chief available",
                 })
 
         return preserved + new_rows

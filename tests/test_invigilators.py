@@ -27,7 +27,6 @@ def test_extended_duty_ends_at_1720_before_1730_duty(small_data):
     roster = InvigilatorAllocator(small_data).allocate([hall_assignment])
     assert any(
         row["invigilator_id"] == "I001"
-        and row["role"] == "INVIGILATOR"
         and row["status"] == "ASSIGNED"
         for row in roster
     )
@@ -74,3 +73,52 @@ def test_own_department_is_ineligible_for_every_course_in_merged_hall(small_data
 
     roster = InvigilatorAllocator(small_data).allocate([hall_assignment])
     assert all(row["invigilator_id"] != "I001" for row in roster)
+
+def test_chief_uses_a_compatible_hall_and_is_reserved_before_hall_staffing(small_data):
+    small_data["invigilators"][0]["department"] = "CSE"
+    small_data["invigilators"][1]["department"] = "ECE"
+    small_data["invigilators"][1]["is_chief_eligible"] = "NO"
+    third_invigilator = {
+        "invigilator_id": "I003",
+        "name": "Invigilator 3",
+        "department": "ME",
+        "max_sessions_per_week": "5",
+        "unavailable_dates": "",
+        "is_chief_eligible": "NO",
+    }
+    small_data["invigilators"].append(third_invigilator)
+    small_data["course_by_code"]["CSE102"]["department"] = "ECE"
+    halls = [
+        {
+            "hall_id": "H01", "capacity": "10", "rows": "2",
+            "columns": "5", "building": "B1", "floor": "GROUND",
+        },
+        {
+            "hall_id": "H02", "capacity": "8", "rows": "2",
+            "columns": "4", "building": "B1", "floor": "GROUND",
+        },
+    ]
+    small_data["halls"] = halls
+    small_data["hall_by_id"] = {hall["hall_id"]: hall for hall in halls}
+    assignments = [
+        HallAssignment(
+            "2026-12-01", "FN", "H01", ["CSE101"], ["S001"], 3
+        ),
+        HallAssignment(
+            "2026-12-01", "FN", "H02", ["CSE102"], ["S002"], 2
+        ),
+    ]
+
+    roster = InvigilatorAllocator(small_data).allocate(assignments)
+
+    assert any(
+        row["role"] == "CHIEF"
+        and row["hall_id"] == "H02"
+        and row["invigilator_id"] == "I001"
+        and row["status"] == "ASSIGNED"
+        for row in roster
+    )
+    assert not any(
+        row["role"] == "INVIGILATOR" and row["invigilator_id"] == "I001"
+        for row in roster
+    )

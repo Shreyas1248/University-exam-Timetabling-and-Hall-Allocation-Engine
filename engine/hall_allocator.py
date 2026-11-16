@@ -10,7 +10,12 @@ def _course_meta(data, assignment):
         "code": assignment.course_code,
         "department": course.get("department", ""),
         "duration": int(assignment.duration),
-        "students": list(assignment.students),
+        "students": sorted(
+            assignment.students,
+            key=lambda sid: data["student_by_id"].get(sid, {}).get(
+                "register_number", sid
+            ),
+        ),
     }
 
 
@@ -49,7 +54,9 @@ def _pack_session(data, assignments, halls, unavailable=None):
     date, session = assignments[0].date, assignments[0].session
     available_halls = [
         hall for hall in halls
-        if (hall["hall_id"], date, session) not in unavailable
+        if str(hall.get("available", "YES")).strip().upper()
+        in ("YES", "TRUE", "1")
+        and (hall["hall_id"], date, session) not in unavailable
     ]
     bins = [
         {
@@ -68,63 +75,130 @@ def _pack_session(data, assignments, halls, unavailable=None):
 
     items = [_course_meta(data, assignment) for assignment in assignments]
     items.sort(key=lambda item: (
+        0 if len(item["students"]) < 10 else 1,
         -len(item["students"]), -item["duration"], item["code"]
     ))
     seating_engine = SeatingEngine(data)
     failures = []
 
     for item in items:
-        candidates = []
-        for bin_ in bins:
-            if bin_["remaining"] < len(item["students"]):
-                continue
-            if len(bin_["courses"]) >= 2:
-                continue
-            if bin_["duration"] is not None and bin_["duration"] != item["duration"]:
-                continue
-            if (
-                bin_["courses"]
-                and item["department"] in bin_["departments"]
-            ):
-                continue
-
-            courses = bin_["courses"] + [item["code"]]
-            students_by_course = {
-                code: list(bin_["students_by_course"].get(code, []))
-                for code in bin_["courses"]
-            }
-            students_by_course[item["code"]] = list(item["students"])
-            provisional = make_hall_assignment(
-                data, date, session, bin_["hall"], courses,
-                students_by_course, item["duration"]
+        remaining = list(item["students"])
+        candidates = [
+            bin_ for bin_ in bins
+            if bin_["remaining"] > 0
+            and len(bin_["courses"]) < 2
+            and (
+                bin_["duration"] is None
+                or bin_["duration"] == item["duration"]
             )
-            if seating_engine.can_seat(provisional):
-                candidates.append(bin_)
+            and (
+                not bin_["courses"]
+                or item["department"] not in bin_["departments"]
+            )
+        ]
 
-        if not candidates:
+        for bin_ in candidates:
+            if not remaining:
+                break
+            hall = bin_["hall"]
+            if str(hall.get("floor", "")).strip().upper() == "GROUND":
+                special_students = [
+                    sid for sid in remaining
+                    if str(
+                        data["student_by_id"].get(sid, {}).get(
+                            "special_needs", "NO"
+                        )
+                    ).strip().upper() == "YES"
+                ]
+                regular_students = [
+                    sid for sid in remaining if sid not in set(special_students)
+                ]
+                special_limit = (
+                    len(special_students)
+                    if bin_["courses"]
+                    else (int(hall["columns"]) + 1) // 2
+                )
+                special_limit = min(
+                    special_limit,
+                    (int(hall["columns"]) + 1) // 2,
+                    bin_["remaining"],
+                )
+            else:
+                special_students = []
+                regular_students = [
+                    sid for sid in remaining
+                    if str(
+                        data["student_by_id"].get(sid, {}).get(
+                            "special_needs", "NO"
+                        )
+                    ).strip().upper() != "YES"
+                ]
+                special_limit = 0
+
+            existing_students = len(remaining)
+            maximum = min(bin_["remaining"], existing_students)
+            course_seat_limit = min(
+                int(hall["capacity"]),
+                int(hall["rows"]) * ((int(hall["columns"]) + 1) // 2),
+            )
+            maximum = min(maximum, course_seat_limit)
+            selected = None
+            for special_count in range(special_limit, -1, -1):
+                chosen_special = special_students[:special_count]
+                regular_limit = min(
+                    len(regular_students), maximum - len(chosen_special)
+                )
+                for regular_count in range(regular_limit, -1, -1):
+                    chosen_students = chosen_special + regular_students[:regular_count]
+                    if not chosen_students:
+                        continue
+                    courses = list(bin_["courses"])
+                    students_by_course = {
+                        code: list(bin_["students_by_course"].get(code, []))
+                        for code in courses
+                    }
+                    if item["code"] not in courses:
+                        courses.append(item["code"])
+                    students_by_course.setdefault(item["code"], []).extend(
+                        chosen_students
+                    )
+                    provisional = make_hall_assignment(
+                        data, date, session, hall, courses,
+                        students_by_course, item["duration"]
+                    )
+                    if seating_engine.can_seat(provisional):
+                        selected = chosen_students
+                        break
+                if selected:
+                    break
+
+            if not selected:
+                continue
+
+            selected_set = set(selected)
+            remaining = [
+                sid for sid in remaining if sid not in selected_set
+            ]
+            bin_["remaining"] -= len(selected)
+            bin_["duration"] = item["duration"]
+            bin_["departments"].add(item["department"])
+            if item["code"] not in bin_["courses"]:
+                bin_["courses"].append(item["code"])
+            bin_["students_by_course"].setdefault(item["code"], []).extend(
+                selected
+            )
+
+        if remaining:
             failures.append((
                 item["code"],
-                f"{len(item['students'])} students have no compatible hall "
-                f"with valid seats on {date} {session}",
+                f"{len(remaining)} of {len(item['students'])} students have no "
+                f"compatible hall with valid seats on {date} {session}",
             ))
-            continue
-
-        candidates.sort(key=lambda bin_: (
-            0 if bin_["courses"] else 1,
-            -int(bin_["hall"]["capacity"]),
-            bin_["hall"]["hall_id"],
-        ))
-        chosen = candidates[0]
-        chosen["remaining"] -= len(item["students"])
-        chosen["duration"] = item["duration"]
-        chosen["departments"].add(item["department"])
-        chosen["courses"].append(item["code"])
-        chosen["students_by_course"][item["code"]] = list(item["students"])
 
     for bin_ in bins:
         if len(bin_["courses"]) == 1:
             code = bin_["courses"][0]
-            if len(bin_["students_by_course"][code]) < 10:
+            if len(data["course_students"].get(code, [])) < 10:
                 failures.append((
                     code,
                     "Courses with fewer than 10 students must share a hall "

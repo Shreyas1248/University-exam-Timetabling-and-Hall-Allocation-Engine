@@ -109,15 +109,15 @@ UNIVERSITY EXAMINATION TIMETABLE
 2026-12-05 FN (09:30-12:30) | ISE601       |   41 students | 3 hours
 2026-12-05 AN (14:00-16:00) | ECE301       |   42 students | 2 hours
 2026-12-06 FN (09:30-12:30) | CSE101       |   43 students | 3 hours
-2026-12-10 AN (14:00-16:00) | AI102        |   49 students | 2 hours
-2026-12-10 AN (14:00-16:00) | CSE402       |   50 students | 2 hours
+2026-12-10 AN (14:00-17:00) | CE402        |   49 students | 3 hours
 2026-12-10 AN (14:00-16:00) | DS302        |   49 students | 2 hours
 2026-12-10 AN (14:00-17:00) | EEE502       |   48 students | 3 hours
 2026-12-10 AN (14:00-17:00) | ISE102       |   50 students | 3 hours
 2026-12-10 AN (14:00-16:00) | ISE602       |   49 students | 2 hours
+2026-12-10 AN (14:00-16:00) | MBA502       |   48 students | 2 hours
+2026-12-11 AN (14:00-16:00) | AI102        |   49 students | 2 hours
 2026-12-11 AN (14:00-17:00) | AI602        |   48 students | 3 hours
 2026-12-11 AN (14:00-17:00) | BT202        |   47 students | 3 hours
-2026-12-11 AN (14:00-17:00) | CE402        |   49 students | 3 hours
+2026-12-11 AN (14:00-16:00) | CSE402       |   50 students | 2 hours
 2026-12-11 AN (14:00-17:00) | ECE302       |   49 students | 3 hours
 2026-12-11 AN (14:00-17:00) | ME202        |   49 students | 3 hours
-MBA502       | UNSCHEDULED |   48 students

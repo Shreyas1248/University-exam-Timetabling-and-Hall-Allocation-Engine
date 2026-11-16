@@ -23,7 +23,9 @@ class ChangeManager:
     def _session_halls(self, date, session):
         return [
             h for h in self.data["halls"]
-            if (h["hall_id"], date, session) not in self.unavailable_halls
+            if str(h.get("available", "YES")).strip().upper()
+            in ("YES", "TRUE", "1")
+            and (h["hall_id"], date, session) not in self.unavailable_halls
         ]
 
     def _rebuild_sessions(self, affected):
@@ -391,14 +393,18 @@ class ChangeManager:
         self.data.setdefault("student_courses", {}).setdefault(sid, []).append(
             course_code
         )
-        self.data.setdefault("enrolments", []).append({
+        new_enrolment = {
             "course_code": course_code,
             "student_id": sid,
             "enrolment_type": (
                 "BACKLOG" if str(course.get("exam_type", "")).upper() == "BACKLOG"
                 else "REGULAR"
             ),
-        })
+        }
+        self.data.setdefault("enrolments", []).append(new_enrolment)
+        self.data.setdefault("enrolment_by_student_course", {})[
+            (sid, course_code)
+        ] = new_enrolment
         course["enrolment_count"] = str(
             len(self.data["course_students"][course_code])
         )
@@ -441,14 +447,11 @@ class ChangeManager:
         if not same_day:
             return []
 
-        existing_course = self.data["course_by_code"][same_day[0].course_code]
-        candidate_course = self.data["course_by_code"][course_code]
         consent = str(student.get("backlog_consent", "NO")).strip().upper() == "YES"
+        checker = ConstraintChecker(self.data)
         backlog_pair = (
-            str(existing_course.get("exam_type", "REGULAR")).strip().upper()
-            == "BACKLOG"
-            or str(candidate_course.get("exam_type", "REGULAR")).strip().upper()
-            == "BACKLOG"
+            checker._is_backlog_for_student(sid, same_day[0].course_code)
+            or checker._is_backlog_for_student(sid, course_code)
         )
         if consent and backlog_pair and same_day[0].session != assignment.session:
             return []

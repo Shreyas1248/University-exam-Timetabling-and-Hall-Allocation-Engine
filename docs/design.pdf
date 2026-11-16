@@ -4,19 +4,22 @@
 << /Type /Catalog /Pages 2 0 R >>
 endobj
 2 0 obj
-<< /Type /Pages /Kids [4 0 R 6 0 R] /Count 2 >>
+<< /Type /Pages /Kids [5 0 R 7 0 R 9 0 R 11 0 R] /Count 4 >>
 endobj
 3 0 obj
 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
 endobj
 4 0 obj
-<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents 5 0 R >>
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>
 endobj
 5 0 obj
-<< /Length 4232 >>
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 6 0 R >>
+endobj
+6 0 obj
+<< /Length 4242 >>
 stream
-BT /F1 12 Tf 50 748 Td (PS-067 Design Document) Tj ET
-BT /F1 12 Tf 50 721 Td (Glossary) Tj ET
+BT /F2 12 Tf 50 748 Td (PS-067 Design Document) Tj ET
+BT /F2 12 Tf 50 721 Td (Glossary) Tj ET
 BT /F1 9 Tf 50 694 Td (Term  |  Meaning) Tj ET
 BT /F1 9 Tf 50 681 Td (Course  |  A course code, department, semester, credits, duration, and enrolment set.) Tj ET
 BT /F1 9 Tf 50 668 Td (Exam assignment  |  One course's date and FN/AN session in the timetable.) Tj ET
@@ -27,18 +30,18 @@ BT /F1 9 Tf 50 616 Td (Core course  |  A course with at least four credits.) Tj 
 BT /F1 9 Tf 50 603 Td (Soft violation  |  A gap-rule exception used only when no gap-compliant session is feasible.) Tj ET
 BT /F1 9 Tf 50 590 Td (Unstaffed  |  A required invigilator or chief could not be assigned without breaking) Tj ET
 BT /F1 9 Tf 50 577 Td (   eligibility.) Tj ET
-BT /F1 12 Tf 50 555 Td (Domain model) Tj ET
-BT /F1 12 Tf 50 528 Td (Domain model) Tj ET
+BT /F2 12 Tf 50 555 Td (Domain model) Tj ET
+BT /F2 12 Tf 50 528 Td (Domain model) Tj ET
 BT /F1 9 Tf 50 510 Td (Course and Student master records are connected by enrolments. Exam Assignments map to) Tj ET
 BT /F1 9 Tf 50 497 Td (   HallAssignments; physical Halls host them and Invigilators staff them.) Tj ET
 BT /F1 9 Tf 50 475 Td (The CSV masters are loaded into normalized lookup maps by `DataLoader`.) Tj ET
 BT /F1 9 Tf 50 462 Td (`Assignment` and `HallAssignment` are the runtime scheduling and allocation) Tj ET
 BT /F1 9 Tf 50 449 Td (records; report classes serialize those records without owning business rules.) Tj ET
-BT /F1 12 Tf 50 427 Td (Exam lifecycle) Tj ET
-BT /F1 12 Tf 50 400 Td (Exam lifecycle) Tj ET
+BT /F2 12 Tf 50 427 Td (Exam lifecycle) Tj ET
+BT /F2 12 Tf 50 400 Td (Exam lifecycle) Tj ET
 BT /F1 9 Tf 50 382 Td (Registered -> Pending -> Scheduled -> Rescheduled -> Finalized. If no feasible session) Tj ET
 BT /F1 9 Tf 50 369 Td (   exists, Pending -> Unscheduled and the blocking rule is reported.) Tj ET
-BT /F1 12 Tf 50 347 Td (Business-rule register) Tj ET
+BT /F2 12 Tf 50 347 Td (Business-rule register) Tj ET
 BT /F1 9 Tf 50 320 Td (ID  |  Rule and implemented outcome) Tj ET
 BT /F1 9 Tf 50 307 Td (BR-01  |  A student cannot have two exams in one session or more than one exam per day,) Tj ET
 BT /F1 9 Tf 50 294 Td (   except two different-session exams when the student has backlog consent and one exam is) Tj ET
@@ -49,67 +52,204 @@ BT /F1 9 Tf 50 242 Td (   programme/semester, with course department/semester as
 BT /F1 9 Tf 50 229 Td (   calendar days. Electives have no gap. A gap-only fallback is recorded as a soft) Tj ET
 BT /F1 9 Tf 50 216 Td (   violation.) Tj ET
 BT /F1 9 Tf 50 203 Td (BR-03  |  Courses are ordered by enrolment descending, credits descending, and course code.) Tj ET
-BT /F1 9 Tf 50 190 Td (   Each is placed in the earliest feasible session, preferring a gap-compliant placement.) Tj ET
-BT /F1 9 Tf 50 177 Td (BR-04  |  Total enrolment in a session may not exceed 90% of available hall capacity. The) Tj ET
-BT /F1 9 Tf 50 164 Td (   integer threshold is rounded down. Two- and three-hour exams cannot share a hall.) Tj ET
-BT /F1 9 Tf 50 151 Td (BR-05  |  Halls are considered largest first. Each holds at most two courses; courses must) Tj ET
-BT /F1 9 Tf 50 138 Td (   be from different departments; courses with fewer than 10 students must share. Exactly 10) Tj ET
-BT /F1 9 Tf 50 125 Td (   students may use a hall alone.) Tj ET
-BT /F1 9 Tf 50 112 Td (BR-06  |  Seats are row-major; students are sorted by register number within course queues) Tj ET
-BT /F1 9 Tf 50 99 Td (   and placed in alternating columns to avoid adjacent same-course seats. Special-needs) Tj ET
-BT /F1 9 Tf 50 86 Td (   students require row 1 of a ground-floor hall; unseated students receive an explicit) Tj ET
-BT /F1 9 Tf 50 73 Td (   status. Special-needs priority takes precedence over the general queue order.) Tj ET
-BT /F1 8 Tf 520 30 Td (Page 1 of 2) Tj ET
+BT /F1 9 Tf 50 190 Td (   Each is placed in the earliest feasible session, preferring a gap-compliant placement. A) Tj ET
+BT /F1 9 Tf 50 177 Td (   bounded deterministic repair pass displaces only blocking assignments to recover) Tj ET
+BT /F1 9 Tf 50 164 Td (   unscheduled courses; backlog courses remain restricted to their permitted final sessions.) Tj ET
+BT /F1 9 Tf 50 151 Td (BR-04  |  Total enrolment in a session may not exceed 90% of available hall capacity. The) Tj ET
+BT /F1 9 Tf 50 138 Td (   integer threshold is rounded down. Two- and three-hour exams cannot share a hall.) Tj ET
+BT /F1 9 Tf 50 125 Td (BR-05  |  Halls are considered largest first. Each holds at most two courses; courses must) Tj ET
+BT /F1 9 Tf 50 112 Td (   be from different departments; courses with fewer than 10 students must share. Exactly 10) Tj ET
+BT /F1 9 Tf 50 99 Td (   students may use a hall alone.) Tj ET
+BT /F1 9 Tf 50 86 Td (BR-06  |  Seats are row-major; students are sorted by register number within course queues) Tj ET
+BT /F1 9 Tf 50 73 Td (   and placed in alternating columns to avoid adjacent same-course seats. Special-needs) Tj ET
+BT /F1 8 Tf 520 30 Td (Page 1 of 4) Tj ET
 endstream
 endobj
-6 0 obj
-<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents 7 0 R >>
-endobj
 7 0 obj
-<< /Length 2787 >>
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 8 0 R >>
+endobj
+8 0 obj
+<< /Length 3293 >>
 stream
-BT /F1 9 Tf 50 748 Td (BR-07  |  Each hall requires `ceil\(students / 30\)` invigilators, minimum one, plus one chief) Tj ET
-BT /F1 9 Tf 50 735 Td (   per building/session. Staff cannot invigilate their own department's course, exceed two) Tj ET
-BT /F1 9 Tf 50 722 Td (   sessions/day, exceed their weekly maximum, or overlap a configured unavailable period.) Tj ET
-BT /F1 9 Tf 50 709 Td (   Special-needs time extends hall duty by 20 minutes.) Tj ET
-BT /F1 9 Tf 50 696 Td (BR-08  |  Eligible invigilators are ordered by assigned load, department, then ID.) Tj ET
-BT /F1 9 Tf 50 683 Td (   Unavailable dates/periods are respected. Exhaustion produces an explicit `UNSTAFFED`) Tj ET
-BT /F1 9 Tf 50 670 Td (   roster row and violation.) Tj ET
-BT /F1 9 Tf 50 657 Td (BR-09  |  A postponed course moves to the earliest later feasible session. Its old and new) Tj ET
-BT /F1 9 Tf 50 644 Td (   sessions alone are rebuilt; other session assignments are retained. Student daily/backlog) Tj ET
-BT /F1 9 Tf 50 631 Td (   constraints are rechecked.) Tj ET
-BT /F1 9 Tf 50 618 Td (BR-10  |  A closed hall is excluded from that session. If the remaining halls cannot fit the) Tj ET
-BT /F1 9 Tf 50 605 Td (   session, the smallest movable course is placed in a later feasible session and a warning) Tj ET
-BT /F1 9 Tf 50 592 Td (   is recorded.) Tj ET
-BT /F1 9 Tf 50 579 Td (BR-11  |  A late registrant is rejected if the addition creates a clash. Otherwise, a) Tj ET
-BT /F1 9 Tf 50 566 Td (   compatible hall with the most free seats is selected; rejected additions are rolled back.) Tj ET
-BT /F1 9 Tf 50 553 Td (BR-12  |  Backlog exams are limited to AN in the final three calendar days. Enrolment above) Tj ET
-BT /F1 9 Tf 50 540 Td (   50 also permits FN in those days.) Tj ET
-BT /F1 12 Tf 50 518 Td (Validation and known acceptance limits) Tj ET
-BT /F1 9 Tf 50 491 Td (Input validation covers unique identifiers, enrolment references and) Tj ET
-BT /F1 9 Tf 50 478 Td (duplicates, valid durations/credits/flags, hall capacity versus dimensions,) Tj ET
-BT /F1 9 Tf 50 465 Td (window slots/times/holidays, late-enrolment references, invigilator limits,) Tj ET
-BT /F1 9 Tf 50 452 Td (and optional unavailability periods.) Tj ET
-BT /F1 9 Tf 50 430 Td (The bundled fixture currently produces one explicitly unscheduled course) Tj ET
-BT /F1 9 Tf 50 417 Td (\(`MBA502`\) and one unstaffed chief. These are reported rather than silently) Tj ET
-BT /F1 9 Tf 50 404 Td (weakening hard rules. The official sample ZIP and its exact expected-output) Tj ET
-BT /F1 9 Tf 50 391 Td (README were not available during this implementation; verify parser syntax and) Tj ET
-BT /F1 9 Tf 50 378 Td (all output columns against that pack before claiming hidden-test equivalence.) Tj ET
-BT /F1 8 Tf 520 30 Td (Page 2 of 2) Tj ET
+BT /F1 9 Tf 50 748 Td (   students require row 1 of a ground-floor hall; unseated students receive an explicit) Tj ET
+BT /F1 9 Tf 50 735 Td (   status. Special-needs priority takes precedence over the general queue order.) Tj ET
+BT /F1 9 Tf 50 722 Td (BR-07  |  Each hall requires `ceil\(students / 30\)` invigilators, minimum one, plus one chief) Tj ET
+BT /F1 9 Tf 50 709 Td (   per building/session. Hall invigilators cannot invigilate their own department's course.) Tj ET
+BT /F1 9 Tf 50 696 Td (   All staff are limited to two sessions/day and their weekly maximum; unavailable) Tj ET
+BT /F1 9 Tf 50 683 Td (   dates/periods and special-needs extensions are respected.) Tj ET
+BT /F1 9 Tf 50 670 Td (BR-08  |  Eligible invigilators are ordered by assigned load, department, then ID. A chief) Tj ET
+BT /F1 9 Tf 50 657 Td (   is reserved before hall staffing and attached to a compatible hall in the building.) Tj ET
+BT /F1 9 Tf 50 644 Td (   Unavailable dates/periods are respected. Exhaustion produces an explicit `UNSTAFFED`) Tj ET
+BT /F1 9 Tf 50 631 Td (   roster row and violation.) Tj ET
+BT /F1 9 Tf 50 618 Td (BR-09  |  A postponed course moves to the earliest later feasible session. Its old and new) Tj ET
+BT /F1 9 Tf 50 605 Td (   sessions alone are rebuilt; other session assignments are retained. Student daily/backlog) Tj ET
+BT /F1 9 Tf 50 592 Td (   constraints are rechecked.) Tj ET
+BT /F1 9 Tf 50 579 Td (BR-10  |  A closed hall is excluded from that session. If the remaining halls cannot fit the) Tj ET
+BT /F1 9 Tf 50 566 Td (   session, the smallest movable course is placed in a later feasible session and a warning) Tj ET
+BT /F1 9 Tf 50 553 Td (   is recorded.) Tj ET
+BT /F1 9 Tf 50 540 Td (BR-11  |  A late registrant is rejected if the addition creates a clash. Otherwise, a) Tj ET
+BT /F1 9 Tf 50 527 Td (   compatible hall with the most free seats is selected; rejected additions are rolled back.) Tj ET
+BT /F1 9 Tf 50 514 Td (BR-12  |  Backlog exams are limited to AN in the final three calendar days. Enrolment above) Tj ET
+BT /F1 9 Tf 50 501 Td (   50 also permits FN in those days.) Tj ET
+BT /F2 12 Tf 50 479 Td (Validation and known acceptance limits) Tj ET
+BT /F1 9 Tf 50 452 Td (Input validation covers unique identifiers, enrolment references and) Tj ET
+BT /F1 9 Tf 50 439 Td (duplicates, valid durations/credits/flags, hall capacity versus dimensions,) Tj ET
+BT /F1 9 Tf 50 426 Td (window slots/times/holidays, late-enrolment references, invigilator limits,) Tj ET
+BT /F1 9 Tf 50 413 Td (and optional unavailability periods.) Tj ET
+BT /F1 9 Tf 50 391 Td (The official sample pack can be placed locally under `data/official`; its) Tj ET
+BT /F1 9 Tf 50 378 Td (command format and output columns are documented in its README. The pack is) Tj ET
+BT /F1 9 Tf 50 365 Td (excluded from Git because it contains student identifiers and special-needs/) Tj ET
+BT /F1 9 Tf 50 352 Td (consent flags. Its README states that expected output files are not included.) Tj ET
+BT /F1 9 Tf 50 339 Td (Running the pack therefore verifies input compatibility and the exposed rule) Tj ET
+BT /F1 9 Tf 50 326 Td (scenarios, but does not establish field-for-field equivalence with the hidden) Tj ET
+BT /F1 9 Tf 50 313 Td (evaluation set.) Tj ET
+BT /F1 8 Tf 520 30 Td (Page 2 of 4) Tj ET
+endstream
+endobj
+9 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 10 0 R >>
+endobj
+10 0 obj
+<< /Length 2109 >>
+stream
+BT /F2 16 Tf 50 750 Td (Domain Class Diagram) Tj ET
+BT /F1 10 Tf 50 728 Td (Core records and their relationships) Tj ET
+0.8 w
+40 560 200 125 re S
+40 662 m 240 662 l S
+BT /F2 11 Tf 48 669 Td (Course) Tj ET
+BT /F1 8 Tf 48 646 Td (course_code, department, semester) Tj ET
+BT /F1 8 Tf 48 632 Td (credits, duration, exam_type) Tj ET
+0.8 w
+372 560 200 125 re S
+372 662 m 572 662 l S
+BT /F2 11 Tf 380 669 Td (Student) Tj ET
+BT /F1 8 Tf 380 646 Td (student_id, register_number) Tj ET
+BT /F1 8 Tf 380 632 Td (programme, semester, needs/consent) Tj ET
+0.8 w
+40 340 200 125 re S
+40 442 m 240 442 l S
+BT /F2 11 Tf 48 449 Td (Assignment) Tj ET
+BT /F1 8 Tf 48 426 Td (course_code, date, session) Tj ET
+BT /F1 8 Tf 48 412 Td (duration, enrolled students) Tj ET
+0.8 w
+372 340 200 125 re S
+372 442 m 572 442 l S
+BT /F2 11 Tf 380 449 Td (HallAssignment) Tj ET
+BT /F1 8 Tf 380 426 Td (date, session, hall_id) Tj ET
+BT /F1 8 Tf 380 412 Td (courses, seats, extended_end) Tj ET
+0.8 w
+40 120 200 125 re S
+40 222 m 240 222 l S
+BT /F2 11 Tf 48 229 Td (Hall) Tj ET
+BT /F1 8 Tf 48 206 Td (hall_id, capacity, rows, columns) Tj ET
+BT /F1 8 Tf 48 192 Td (building, floor) Tj ET
+0.8 w
+372 120 200 125 re S
+372 222 m 572 222 l S
+BT /F2 11 Tf 380 229 Td (Invigilator) Tj ET
+BT /F1 8 Tf 380 206 Td (invigilator_id, department) Tj ET
+BT /F1 8 Tf 380 192 Td (weekly limit, unavailable dates) Tj ET
+240 625 m 372 625 l S
+365.1 629.0 m 372 625 l S
+365.1 621.0 m 372 625 l S
+BT /F1 8 Tf 276 636 Td (enrolments) Tj ET
+140 560 m 140 465 l S
+144.0 471.9 m 140 465 l S
+136.0 471.9 m 140 465 l S
+BT /F1 8 Tf 149 510 Td (scheduled as) Tj ET
+240 402 m 372 402 l S
+365.1 406.0 m 372 402 l S
+365.1 398.0 m 372 402 l S
+BT /F1 8 Tf 276 413 Td (allocated into) Tj ET
+240 220 m 372 360 l S
+364.3 357.7 m 372 360 l S
+370.2 352.2 m 372 360 l S
+BT /F1 8 Tf 288 290 Td (hosts) Tj ET
+472 340 m 472 245 l S
+476.0 251.9 m 472 245 l S
+468.0 251.9 m 472 245 l S
+BT /F1 8 Tf 481 287 Td (staffed by) Tj ET
+BT /F1 9 Tf 50 82 Td (Many-to-many enrolment; one course per assignment; a session assignment may use multiple halls.) Tj ET
+BT /F1 8 Tf 520 30 Td (Page 3 of 4) Tj ET
+endstream
+endobj
+11 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 12 0 R >>
+endobj
+12 0 obj
+<< /Length 1482 >>
+stream
+BT /F2 16 Tf 50 750 Td (Exam Lifecycle State Diagram) Tj ET
+BT /F1 10 Tf 50 728 Td (A change command rebuilds only the affected session\(s\).) Tj ET
+0.8 w
+40 610 135 55 re S
+BT /F2 10 Tf 54 632 Td (Registered) Tj ET
+0.8 w
+240 610 135 55 re S
+BT /F2 10 Tf 254 632 Td (Pending) Tj ET
+0.8 w
+440 610 135 55 re S
+BT /F2 10 Tf 454 632 Td (Scheduled) Tj ET
+0.8 w
+240 430 135 55 re S
+BT /F2 10 Tf 254 452 Td (Unscheduled) Tj ET
+0.8 w
+440 430 135 55 re S
+BT /F2 10 Tf 454 452 Td (Rescheduled) Tj ET
+0.8 w
+240 250 135 55 re S
+BT /F2 10 Tf 254 272 Td (Finalized) Tj ET
+175 637 m 240 637 l S
+233.1 641.0 m 240 637 l S
+233.1 633.0 m 240 637 l S
+BT /F1 8 Tf 184 647 Td (validate) Tj ET
+375 637 m 440 637 l S
+433.1 641.0 m 440 637 l S
+433.1 633.0 m 440 637 l S
+BT /F1 8 Tf 378 647 Td (hard rules pass) Tj ET
+307 610 m 307 485 l S
+311.0 491.9 m 307 485 l S
+303.0 491.9 m 307 485 l S
+BT /F1 8 Tf 315 535 Td (no feasible slot) Tj ET
+507 610 m 507 485 l S
+511.0 491.9 m 507 485 l S
+503.0 491.9 m 507 485 l S
+BT /F1 8 Tf 515 535 Td (POSTPONE) Tj ET
+307 430 m 307 305 l S
+311.0 311.9 m 307 305 l S
+303.0 311.9 m 307 305 l S
+BT /F1 8 Tf 315 365 Td (reported) Tj ET
+440 457 m 375 278 l S
+381.1 283.1 m 375 278 l S
+373.6 285.9 m 375 278 l S
+BT /F1 8 Tf 400 355 Td (complete) Tj ET
+1 w
+472 665 m 472 696 l 550 696 l 550 665 l S
+BT /F1 8 Tf 468 704 Td (late registration / hall closure) Tj ET
+BT /F1 8 Tf 520 30 Td (Page 4 of 4) Tj ET
+550 675 m 540 665 l S
+547.7 667.1 m 540 665 l S
+542.1 672.7 m 540 665 l S
 endstream
 endobj
 xref
-0 8
+0 13
 0000000000 65535 f 
 0000000015 00000 n 
 0000000064 00000 n 
-0000000127 00000 n 
-0000000197 00000 n 
-0000000323 00000 n 
-0000004607 00000 n 
-0000004733 00000 n 
+0000000140 00000 n 
+0000000210 00000 n 
+0000000285 00000 n 
+0000000421 00000 n 
+0000004715 00000 n 
+0000004851 00000 n 
+0000008196 00000 n 
+0000008333 00000 n 
+0000010495 00000 n 
+0000010633 00000 n 
 trailer
-<< /Size 8 /Root 1 0 R >>
+<< /Size 13 /Root 1 0 R >>
 startxref
-7572
+12168
 %%EOF
